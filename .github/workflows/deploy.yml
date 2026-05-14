@@ -35,9 +35,9 @@ jobs:
       - name: Create tunnel
         id: tunnel
         run: |
-          URL=$(cloudflared tunnel --url http://localhost:3000 2>&1 | grep -oP 'https://\K[a-z0-9-]+\.trycloudflare\.com' | head -1)
-          echo "url=https://$URL" >> $GITHUB_OUTPUT
-          echo "App deployed at: https://$URL"
+          URL=$(cloudflared tunnel --url http://localhost:3000 2>&1 | grep -o 'https://[^ ]*trycloudflare\.com' | head -1)
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "App deployed at: $URL"
         shell: bash
 
       - name: Wait
