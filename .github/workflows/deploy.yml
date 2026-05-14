@@ -1,0 +1,46 @@
+name: Deploy with TryCloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Cloudflare
+        run: |
+          npm install -g cloudflared
+
+      - name: Start servers
+        run: |
+          npm run server &
+          sleep 2
+          npx vite --port=3000 --host &
+          sleep 5
+        shell: bash
+
+      - name: Create tunnel
+        id: tunnel
+        run: |
+          URL=$(cloudflared tunnel --url http://localhost:3000 2>&1 | grep -oP 'https://\K[a-z0-9-]+\.trycloudflare\.com' | head -1)
+          echo "url=https://$URL" >> $GITHUB_OUTPUT
+          echo "App deployed at: https://$URL"
+        shell: bash
+
+      - name: Wait
+        run: |
+          sleep 3600
