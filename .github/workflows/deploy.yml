@@ -18,29 +18,29 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        # npm ci is faster and safer since you have a package-lock.json
         run: npm ci
 
       - name: Install Cloudflare
-        run: |
-          npm install -g cloudflared
+        run: npm install -g cloudflared
 
-      - name: Start servers
+      - name: Start Servers, Tunnel, and Wait
         run: |
+          # 1. Start the backend server in the background
           npm run server &
-          sleep 2
+          
+          # 2. Start Vite in the background
           npx vite --port=3000 --host &
-          sleep 5
-        shell: bash
-
-      - name: Create tunnel and get URL
-        id: tunnel
-        run: |
+          
+          # Give the servers a few seconds to boot up completely
+          sleep 8
+          
+          # 3. Start the Cloudflare tunnel in the background
           cloudflared tunnel --url http://localhost:3000 > tunnel.log 2>&1 &
           
-          # Wait a bit longer to ensure Cloudflare generates the URL
-          sleep 15
+          # Give Cloudflare time to generate the URL
+          sleep 12
           
+          # 4. Grab the URL and publish it to the GitHub Summary
           URL=$(grep -o 'https://[^ ]*trycloudflare\.com' tunnel.log | head -1)
 
           if [ -z "$URL" ]; then
@@ -49,15 +49,11 @@ jobs:
             exit 1
           fi
 
-          echo "url=$URL" >> $GITHUB_OUTPUT
           echo "App deployed at: $URL"
-          
-          # This writes the URL to the GitHub Actions Summary UI so you can easily see it!
           echo "### 🚀 TryCloudflare Tunnel Active!" >> $GITHUB_STEP_SUMMARY
           echo "**Your temporary URL is:** [$URL]($URL)" >> $GITHUB_STEP_SUMMARY
-        shell: bash
-
-      - name: Keep Server Alive (Wait)
-        run: |
-          echo "The server is now running. This step stays open for 1 hour to keep your site online."
+          
+          # 5. Keep the step alive so the servers don't get killed
+          echo "The servers are running. Keeping the workflow alive for 1 hour..."
           sleep 3600
+        shell: bash
