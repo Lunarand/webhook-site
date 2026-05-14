@@ -18,29 +18,29 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          rm -rf node_modules
+          npm ci
 
       - name: Install Cloudflare
         run: npm install -g cloudflared
 
       - name: Start Servers, Tunnel, and Wait
         run: |
-          # 1. Start the backend server in the background
+          # 1. Start backend server
           npm run server &
           
-          # 2. Start Vite in the background
-          npx vite --port=3000 --host &
+          # 2. Force Vite to use IPv4 and strict port 3000. 
+          # If 3000 is taken by the backend, this will explicitly fail instead of hiding the error.
+          npx vite --port=3000 --host 127.0.0.1 --strictPort &
           
-          # Give the servers a few seconds to boot up completely
-          sleep 8
+          sleep 10
           
-          # 3. Start the Cloudflare tunnel in the background
-          cloudflared tunnel --url http://localhost:3000 > tunnel.log 2>&1 &
+          # 3. Explicitly target IPv4 instead of 'localhost'
+          cloudflared tunnel --url http://127.0.0.1:3000 > tunnel.log 2>&1 &
           
-          # Give Cloudflare time to generate the URL
-          sleep 12
+          sleep 15
           
-          # 4. Grab the URL and publish it to the GitHub Summary
           URL=$(grep -o 'https://[^ ]*trycloudflare\.com' tunnel.log | head -1)
 
           if [ -z "$URL" ]; then
@@ -53,7 +53,6 @@ jobs:
           echo "### 🚀 TryCloudflare Tunnel Active!" >> $GITHUB_STEP_SUMMARY
           echo "**Your temporary URL is:** [$URL]($URL)" >> $GITHUB_STEP_SUMMARY
           
-          # 5. Keep the step alive so the servers don't get killed
           echo "The servers are running. Keeping the workflow alive for 1 hour..."
           sleep 3600
         shell: bash
