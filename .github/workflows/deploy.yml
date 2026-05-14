@@ -18,7 +18,8 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        # npm ci is faster and safer since you have a package-lock.json
+        run: npm ci
 
       - name: Install Cloudflare
         run: |
@@ -32,23 +33,31 @@ jobs:
           sleep 5
         shell: bash
 
-      - name: Create tunnel
+      - name: Create tunnel and get URL
         id: tunnel
         run: |
           cloudflared tunnel --url http://localhost:3000 > tunnel.log 2>&1 &
-          sleep 12
+          
+          # Wait a bit longer to ensure Cloudflare generates the URL
+          sleep 15
+          
           URL=$(grep -o 'https://[^ ]*trycloudflare\.com' tunnel.log | head -1)
 
           if [ -z "$URL" ]; then
-            echo "Tunnel failed to start"
+            echo "Tunnel failed to start. Printing logs:"
             cat tunnel.log
             exit 1
           fi
 
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "App deployed at: $URL"
+          
+          # This writes the URL to the GitHub Actions Summary UI so you can easily see it!
+          echo "### 🚀 TryCloudflare Tunnel Active!" >> $GITHUB_STEP_SUMMARY
+          echo "**Your temporary URL is:** [$URL]($URL)" >> $GITHUB_STEP_SUMMARY
         shell: bash
 
-      - name: Wait
+      - name: Keep Server Alive (Wait)
         run: |
+          echo "The server is now running. This step stays open for 1 hour to keep your site online."
           sleep 3600
