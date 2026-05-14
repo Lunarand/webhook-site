@@ -35,7 +35,16 @@ jobs:
       - name: Create tunnel
         id: tunnel
         run: |
-          URL=$(cloudflared tunnel --url http://localhost:3000 2>&1 | grep -o 'https://[^ ]*trycloudflare\.com' | head -1)
+          cloudflared tunnel --url http://localhost:3000 > tunnel.log 2>&1 &
+          sleep 12
+          URL=$(grep -o 'https://[^ ]*trycloudflare\.com' tunnel.log | head -1)
+
+          if [ -z "$URL" ]; then
+            echo "Tunnel failed to start"
+            cat tunnel.log
+            exit 1
+          fi
+
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "App deployed at: $URL"
         shell: bash
