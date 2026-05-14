@@ -19,8 +19,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          rm -rf node_modules
-          npm ci
+          # Delete the locked dependencies and the folder to force a fresh Linux install
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Install Cloudflare
         run: npm install -g cloudflared
@@ -31,7 +32,6 @@ jobs:
           npm run server &
           
           # 2. Force Vite to use IPv4 and strict port 3000. 
-          # If 3000 is taken by the backend, this will explicitly fail instead of hiding the error.
           npx vite --port=3000 --host 127.0.0.1 --strictPort &
           
           sleep 10
